@@ -23,6 +23,8 @@ export interface Story {
   summary_takeaways?: string[] | null;
   summary_model?: string | null;
   summary_generated_at?: string | null;
+  /** One-line significance (DeepSeek summaries only). */
+  summary_why_it_matters?: string | null;
 }
 
 export type TagKind = "company" | "tool" | "category";

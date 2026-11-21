@@ -25,8 +25,8 @@ export function StoryCard({ story, query }: { story: StoryWithSources; query?: s
           {primary && story.first_published_at && <span aria-hidden="true">·</span>}
           <TimeAgo iso={story.first_published_at} />
           {extra > 0 && <span className="text-primary">+{extra} more source{extra > 1 ? "s" : ""}</span>}
-          {FEATURES.storyTypeBadges && story.story_type !== "news" && (
-            <Badge variant="secondary" className="capitalize">{story.story_type.replace("_", " ")}</Badge>
+          {FEATURES.storyTypeBadges && story.story_type !== "news" && story.story_type !== "other" && (
+            <Badge variant="secondary" className="capitalize">{story.story_type.replace(/_/g, " ")}</Badge>
           )}
         </div>
         <h3 className="line-clamp-3 text-base font-semibold leading-snug tracking-tight sm:text-lg">

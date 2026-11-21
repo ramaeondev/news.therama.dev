@@ -8,7 +8,7 @@ export const API_KEY =
 
 export const PAGE_SIZE = 20;
 export const STORY_COLUMNS =
-  "id,headline,description,summary,story_type,importance_score,first_published_at,last_updated_at,source_count,image_url,image_attribution,summary_takeaways,summary_model,summary_generated_at";
+  "id,headline,description,summary,story_type,importance_score,first_published_at,last_updated_at,source_count,image_url,image_attribution,summary_takeaways,summary_model,summary_generated_at,summary_why_it_matters";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {

@@ -123,6 +123,12 @@ export default function Story() {
             <Sparkles className="h-4 w-4" aria-hidden="true" /> AI summary
           </h2>
           <p className="leading-relaxed">{story.summary}</p>
+          {story.summary_why_it_matters && (
+            <p className="mt-2 text-sm leading-relaxed">
+              <span className="font-semibold">Why it matters: </span>
+              {story.summary_why_it_matters}
+            </p>
+          )}
           {story.summary_takeaways && story.summary_takeaways.length > 0 && (
             <>
               <h3 className="mt-3 text-sm font-semibold">Key takeaways</h3>

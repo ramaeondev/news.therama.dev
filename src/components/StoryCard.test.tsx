@@ -102,3 +102,23 @@ describe("StoryCard with AI summary", () => {
     expect(screen.getByLabelText("AI summary")).toBeInTheDocument();
   });
 });
+
+describe("StoryCard story-type badge", () => {
+  const renderWith = (story_type: StoryWithSources["story_type"]) =>
+    render(
+      <MemoryRouter>
+        <TooltipProvider>
+          <StoryCard story={{ ...story, story_type }} />
+        </TooltipProvider>
+      </MemoryRouter>,
+    );
+  it("shows a badge for specific types", () => {
+    renderWith("model_release");
+    expect(screen.getByText("model release")).toBeInTheDocument();
+  });
+  it("shows no badge for news/other", () => {
+    const { container } = renderWith("news");
+    expect(container.textContent).not.toMatch(/\bnews\b.*badge/i);
+    expect(screen.queryByText("news")).toBeNull();
+  });
+});

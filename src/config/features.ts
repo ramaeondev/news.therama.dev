@@ -2,5 +2,5 @@
 export const FEATURES = {
   taxonomy: true,
   topStories: false,
-  storyTypeBadges: false,
+  storyTypeBadges: true,
 } as const;

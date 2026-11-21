@@ -351,6 +351,7 @@ components:
         summary_takeaways:  { type: [array, 'null'], items: { type: string }, description: 'AI key takeaways (3), when summary is present' }
         summary_model:      { type: [string, 'null'], example: claude-haiku-5-5, description: 'Model that wrote the summary; show it with an "AI summary" label' }
         summary_generated_at: { type: [string, 'null'], format: date-time }
+        summary_why_it_matters: { type: [string, 'null'], description: 'One-line significance; only on summaries written by the DeepSeek model' }
       example:
         id: ae893d94-f3ca-4045-af6a-895b1b223288
         slug: null
