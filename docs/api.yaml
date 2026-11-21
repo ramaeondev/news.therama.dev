@@ -20,7 +20,8 @@ info:
 
     Filled by rule-based enrichment (no AI): company / tool / category tags
     (`v_published_story_tags`, `v_taxonomy`) and `image_url` (the publisher's own image,
-    linked from their site; show `image_attribution`). Not filled yet: `summary`,
+    linked from their site; show `image_attribution`). AI-filled: `summary` and
+    `summary_takeaways` (Claude Haiku 5.5; label them as AI-generated). Not filled yet:
     `importance_score`, `slug`.
 
     Merged stories: when the admin merges two stories, the merged one stops being public and
@@ -333,7 +334,7 @@ components:
         slug:               { type: [string, 'null'], description: Not used yet }
         headline:           { type: string }
         description:        { type: [string, 'null'], description: Publisher-provided description (plain text) }
-        summary:            { type: [string, 'null'], description: AI summary (not generated yet) }
+        summary:            { type: [string, 'null'], description: 'AI summary (Claude Haiku 5.5, about 60 words), generated from the original article' }
         story_type:
           type: string
           enum: [announcement, product_release, model_release, research, funding, business, policy, security, analysis, news, other]
@@ -347,6 +348,9 @@ components:
         source_count:       { type: integer, description: Number of published source articles }
         image_url:          { type: [string, 'null'], format: uri, description: "Publisher's own image (https), linked from their site, not stored here" }
         image_attribution:  { type: [string, 'null'], description: 'Who the image belongs to (the source name); show it as a caption' }
+        summary_takeaways:  { type: [array, 'null'], items: { type: string }, description: 'AI key takeaways (3), when summary is present' }
+        summary_model:      { type: [string, 'null'], example: claude-haiku-5-5, description: 'Model that wrote the summary; show it with an "AI summary" label' }
+        summary_generated_at: { type: [string, 'null'], format: date-time }
       example:
         id: ae893d94-f3ca-4045-af6a-895b1b223288
         slug: null
