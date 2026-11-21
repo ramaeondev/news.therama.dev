@@ -3,7 +3,7 @@
 import type { FeedCursor, Story, StorySource, StoryWithSources } from "@/types/news";
 
 export const API_URL = ((import.meta.env.VITE_SUPABASE_URL as string | undefined) || "https://api-v3.therama.dev").replace(/\/$/, "");
-const API_KEY =
+export const API_KEY =
   (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) || "sb_publishable_TvfycUXoZ1whU1e-L8qhH-_PwN2YmxB";
 
 export const PAGE_SIZE = 20;

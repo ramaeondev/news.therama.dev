@@ -40,10 +40,12 @@ src/
 | `/news/:id` | Story with its publisher link(s) and "More from source" |
 | `/search?q=&range=&from=&to=` | Full-text search with time filters (shareable URLs) |
 | `/sources`, `/sources/:slug` | Publishers and their stories |
-| `/about` | About and attribution |
+| `/about` | About and attribution, with social links from `static.social_links` |
+| `/admin` | Editorial review (not linked; `noindex`). Password-only sign-in for the single admin; publish, reject or unpublish stories |
 
 ## Notes
-- **Read-only:** no login, no writes. Only the public views and the `search_published_stories` RPC are used.
+- **Public pages are read-only:** no login, no writes. Only the public views and the `search_published_stories` RPC are used.
+- **Admin (`/admin`):** signs in through Supabase Auth with a fixed account email (`VITE_ADMIN_EMAIL`, default `admin@news.therama.dev`) and the password set by api.therama.dev's `scripts/create-ai-news-admin.sh`. It calls the `ai_news.admin_*` RPCs with the admin's token; the server checks the admin role on every call. The session lives in `sessionStorage`.
 - **Feed order:** sorted by `first_published_at`, the publisher's publication time.
 - **Backend availability:** the backend runs on a home server and can be briefly offline. Pages then show a retry panel.
 - **Feature flags:** company/tool/category filters, top stories and story-type badges are switched off in `src/config/features.ts` until the backend fills that data. AI summaries appear automatically once the `summary` field is populated.

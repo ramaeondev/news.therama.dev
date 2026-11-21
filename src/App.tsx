@@ -17,6 +17,7 @@ const Sources = lazy(() => import("@/pages/Sources"));
 const SourceFeed = lazy(() => import("@/pages/SourceFeed"));
 const About = lazy(() => import("@/pages/About"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const Admin = lazy(() => import("@/pages/Admin"));
 
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
                       <Route path="sources" element={<Sources />} />
                       <Route path="sources/:slug" element={<SourceFeed />} />
                       <Route path="about" element={<About />} />
+                      <Route path="admin" element={<Admin />} />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>
