@@ -87,3 +87,18 @@ describe("states", () => {
     expect(screen.getByText("No stories yet")).toBeInTheDocument();
   });
 });
+
+describe("StoryCard with AI summary", () => {
+  it("shows the summary instead of the publisher description", () => {
+    render(
+      <MemoryRouter>
+        <TooltipProvider>
+          <StoryCard story={{ ...story, summary: "OpenAI says the model is faster." }} />
+        </TooltipProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("OpenAI says the model is faster.")).toBeInTheDocument();
+    expect(screen.queryByText("A short description.")).toBeNull();
+    expect(screen.getByLabelText("AI summary")).toBeInTheDocument();
+  });
+});

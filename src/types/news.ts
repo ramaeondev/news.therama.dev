@@ -19,6 +19,10 @@ export interface Story {
   /** Publisher's own image (linked, not stored). */
   image_url?: string | null;
   image_attribution?: string | null;
+  /** AI summary details (present when `summary` is). */
+  summary_takeaways?: string[] | null;
+  summary_model?: string | null;
+  summary_generated_at?: string | null;
 }
 
 export type TagKind = "company" | "tool" | "category";

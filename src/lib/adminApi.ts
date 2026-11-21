@@ -95,3 +95,7 @@ export const mergeStories = (keepId: string, mergeId: string) =>
 
 export const dismissSuggestion = (suggestionId: string) =>
   adminRpc<{ suggestion_id: string; status: string }>("admin_dismiss_suggestion", { p_suggestion_id: suggestionId });
+
+/** Clears a story's AI summary; the backend writes a fresh one on its next sweep (about 5 minutes). */
+export const resummarizeStory = (storyId: string) =>
+  adminRpc<{ story_id: string; summaries_cleared: number }>("admin_resummarize", { p_story_id: storyId });

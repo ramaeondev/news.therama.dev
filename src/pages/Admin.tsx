@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Helmet } from "react-helmet-async";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Check, ExternalLink, Loader2, LogOut, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { Archive, Check, ExternalLink, Loader2, LogOut, RotateCcw, ShieldCheck, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { LotusMark } from "@/components/Logo";
 import { ApiError } from "@/lib/api";
 import { loadSession, signIn, signOut } from "@/lib/auth";
 import {
-  AuthRequiredError, fetchAdminStories, fetchMergeSuggestionCount, fetchStatusCounts, setStoryStatus, type AdminStatus, type AdminStory,
+  AuthRequiredError, fetchAdminStories, fetchMergeSuggestionCount, fetchStatusCounts, resummarizeStory, setStoryStatus, type AdminStatus, type AdminStory,
 } from "@/lib/adminApi";
 import { DuplicatesPanel } from "@/components/admin/DuplicatesPanel";
 import { absoluteTime, relativeTime } from "@/lib/time";
@@ -100,7 +100,7 @@ const DONE_TEXT: Record<AdminStatus, string> = {
   pending_review: "Moved to pending",
 };
 
-function StoryRow({ story, onAction, busyId }: { story: AdminStory; onAction: (s: AdminStory, to: AdminStatus) => void; busyId: string | null }) {
+function StoryRow({ story, onAction, onResummarize, busyId }: { story: AdminStory; onAction: (s: AdminStory, to: AdminStatus) => void; onResummarize: (s: AdminStory) => void; busyId: string | null }) {
   const busy = busyId === story.id;
   const { timeZone } = useTimeZone();
   return (
@@ -132,6 +132,11 @@ function StoryRow({ story, onAction, busyId }: { story: AdminStory; onAction: (s
           <a href={story.original_url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             Original <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /><span className="sr-only"> (opens in new tab)</span>
           </a>
+        )}
+        {story.publication_status === "published" && (
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => onResummarize(story)} title="Write a fresh AI summary (within about 5 minutes)">
+            <Sparkles className="mr-1.5 h-4 w-4" aria-hidden="true" /> Re-summarise
+          </Button>
         )}
         {story.publication_status === "published" && (
           <a href={`/news/${story.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -192,6 +197,19 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     onSettled: () => setBusyId(null),
   });
 
+  const resummarize = useMutation({
+    mutationFn: (story: AdminStory) => resummarizeStory(story.id),
+    onMutate: (story) => setBusyId(story.id),
+    onSuccess: () => {
+      toast.success("Summary cleared; a fresh one is written within about 5 minutes");
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    },
+    onError: (err) => {
+      if (!handleAuthError(err)) toast.error(err instanceof Error ? err.message : "Action failed");
+    },
+    onSettled: () => setBusyId(null),
+  });
+
   const stories = list.data?.pages.flat() ?? [];
   const logout = async () => {
     await signOut();
@@ -245,7 +263,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           <>
             <ul className="space-y-3">
               {stories.map((s) => (
-                <StoryRow key={s.id} story={s} busyId={busyId} onAction={(story, to) => mutation.mutate({ story, to })} />
+                <StoryRow key={s.id} story={s} busyId={busyId} onAction={(story, to) => mutation.mutate({ story, to })} onResummarize={(story) => resummarize.mutate(story)} />
               ))}
             </ul>
             {list.hasNextPage && (

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchRedirect } from "@/lib/api";
 import { TagChips } from "@/components/TagChips";
 import { StoryImage } from "@/components/StoryImage";
+import { modelName } from "@/lib/models";
 import { ArrowLeft, ExternalLink, Link2, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useSourceFeed, useStory } from "@/hooks/useNews";
@@ -122,7 +123,19 @@ export default function Story() {
             <Sparkles className="h-4 w-4" aria-hidden="true" /> AI summary
           </h2>
           <p className="leading-relaxed">{story.summary}</p>
-          <p className="mt-2 text-xs text-muted-foreground">Generated summary. Read the original for full details.</p>
+          {story.summary_takeaways && story.summary_takeaways.length > 0 && (
+            <>
+              <h3 className="mt-3 text-sm font-semibold">Key takeaways</h3>
+              <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed">
+                {story.summary_takeaways.map((t, i) => <li key={i}>{t}</li>)}
+              </ul>
+            </>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Summary by {modelName(story.summary_model)}
+            {story.summary_generated_at && <> · generated {absoluteTime(story.summary_generated_at, timeZone)}</>}
+            . AI-generated from the original article; read it for full details.
+          </p>
         </section>
       )}
 

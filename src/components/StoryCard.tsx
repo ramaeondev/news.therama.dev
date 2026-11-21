@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Sparkles } from "lucide-react";
 import type { StoryWithSources } from "@/types/news";
 import { SourceFavicon } from "@/components/SourceFavicon";
 import { TimeAgo } from "@/components/TimeAgo";
@@ -35,11 +35,16 @@ export function StoryCard({ story, query }: { story: StoryWithSources; query?: s
             <Highlight text={story.headline} query={query} />
           </Link>
         </h3>
-        {story.description && (
+        {story.summary ? (
+          <p className="mt-1.5 line-clamp-3 text-sm text-muted-foreground">
+            <Sparkles className="mr-1 inline h-3.5 w-3.5 -translate-y-px text-brand" aria-label="AI summary" />
+            <Highlight text={story.summary} query={query} />
+          </p>
+        ) : story.description ? (
           <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
             <Highlight text={story.description} query={query} />
           </p>
-        )}
+        ) : null}
         <TagChips tags={story.tags} max={3} className="mt-2.5" />
       </div>
       <StoryImage
