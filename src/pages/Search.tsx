@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, X } from "lucide-react";
-import { useDebounced, useSearch } from "@/hooks/useNews";
+import { useDebounced, useSearch, useTaxonomy } from "@/hooks/useNews";
+import type { TagKind } from "@/types/news";
 import { StoryCard, StoryListSkeleton } from "@/components/StoryCard";
 import { EmptyState, ErrorPanel } from "@/components/States";
 import { LoadMore } from "@/components/LoadMore";
@@ -28,6 +29,10 @@ export default function Search() {
   const range = params.get("range") ?? "";
   const fromDay = params.get("from") ?? "";
   const toDay = params.get("to") ?? "";
+  const company = params.get("company") ?? "";
+  const tool = params.get("tool") ?? "";
+  const category = params.get("category") ?? "";
+  const taxonomy = useTaxonomy();
   const [input, setInput] = useState(q);
   const [syncedQ, setSyncedQ] = useState(q);
   const debounced = useDebounced(input, 400);
@@ -63,17 +68,19 @@ export default function Search() {
   }, [range, fromDay, toDay]);
 
   const hasQuery = Boolean(q.trim());
-  const search = useSearch({ q, from, to });
+  const search = useSearch({ q, from, to, company, tool, category });
   const results = useMemo(() => {
     const seen = new Set<string>();
     return (search.data?.pages.flat() ?? []).filter((s) => !seen.has(s.id) && seen.add(s.id));
   }, [search.data]);
-  const filtered = Boolean(range || fromDay || toDay);
+  const filtered = Boolean(range || fromDay || toDay || company || tool || category);
+  const tagName = (kind: TagKind, slug: string) => taxonomy.data?.find((t) => t.kind === kind && t.slug === slug)?.name ?? slug;
+  const activeTags = ([["company", company], ["tool", tool], ["category", category]] as [TagKind, string][]).filter(([, v]) => v);
   const active = hasQuery || filtered;
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Seo title={hasQuery ? `Search: ${q}` : "Search"} path="/search" />
+      <Seo title={hasQuery ? `Search: ${q}` : activeTags.length ? `News: ${activeTags.map(([k, v]) => tagName(k, v)).join(", ")}` : "Search"} path="/search" />
       <h1 className="mb-4 text-2xl font-bold tracking-tight md:text-3xl">Search</h1>
       <div className="relative">
         <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -121,6 +128,36 @@ export default function Search() {
         </div>
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Topic filters">
+        {(["company", "tool", "category"] as TagKind[]).map((kind) => {
+          const value = kind === "company" ? company : kind === "tool" ? tool : category;
+          const options = (taxonomy.data ?? []).filter((t) => t.kind === kind);
+          const label = kind === "company" ? "Company" : kind === "tool" ? "Tool" : "Category";
+          return (
+            <select
+              key={kind}
+              aria-label={`Filter by ${label.toLowerCase()}`}
+              value={value}
+              onChange={(e) => setParam({ [kind]: e.target.value })}
+              className={cn(
+                "h-8 rounded-md border bg-background px-2 text-sm",
+                value ? "border-primary text-foreground" : "text-muted-foreground",
+              )}
+            >
+              <option value="">{`Any ${label.toLowerCase()}`}</option>
+              {options.map((o) => (
+                <option key={o.slug} value={o.slug}>{`${o.name} (${o.story_count})`}</option>
+              ))}
+            </select>
+          );
+        })}
+        {activeTags.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setParam({ company: "", tool: "", category: "" })}>
+            <X className="mr-1 h-4 w-4" aria-hidden="true" /> Clear topics
+          </Button>
+        )}
+      </div>
+
       <div className="mt-8">
         {!active ? (
           <div>
@@ -137,7 +174,7 @@ export default function Search() {
         ) : search.isError && !results.length ? (
           <ErrorPanel onRetry={() => search.refetch()} retrying={search.isFetching} />
         ) : !results.length ? (
-          <EmptyState title={hasQuery ? `No stories match "${q}"` : "No stories in this period"}>
+          <EmptyState title={hasQuery ? `No stories match "${q}"` : "No stories match these filters"}>
             Try fewer words, a wider time range, or quotes for an exact phrase.
           </EmptyState>
         ) : (
@@ -145,6 +182,9 @@ export default function Search() {
             <p className="mb-3 text-sm text-muted-foreground" aria-live="polite">
               {search.hasNextPage ? `${results.length}+` : results.length} result{results.length === 1 ? "" : "s"}
               {hasQuery && <> for <span className="font-medium text-foreground">"{q}"</span></>}
+              {activeTags.map(([kind, slug]) => (
+                <span key={kind}> · <span className="font-medium text-foreground">{tagName(kind, slug)}</span></span>
+              ))}
             </p>
             <div className={cn("space-y-3", search.isFetching && !search.isFetchingNextPage && "opacity-60")}>
               {results.map((s) => <StoryCard key={s.id} story={s} query={q} />)}

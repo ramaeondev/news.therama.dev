@@ -16,9 +16,31 @@ export interface Story {
   /** Time it went live on this site (only present when selected). */
   published_at?: string;
   source_count: number;
+  /** Publisher's own image (linked, not stored). */
+  image_url?: string | null;
+  image_attribution?: string | null;
 }
 
-/** Row of ai_news.v_story_sources (publisher article behind a story). */
+export type TagKind = "company" | "tool" | "category";
+
+/** Row of ai_news.v_published_story_tags. */
+export interface StoryTag {
+  story_id: string;
+  kind: TagKind;
+  slug: string;
+  name: string;
+  is_primary: boolean;
+}
+
+/** Row of ai_news.v_taxonomy (filter options). */
+export interface TaxonomyItem {
+  kind: TagKind;
+  slug: string;
+  name: string;
+  story_count: number;
+}
+
+/** Row of ai_news.v_story_redirects (publisher article behind a story). */
 export interface StorySource {
   story_id: string;
   article_id: string;
@@ -35,6 +57,7 @@ export interface StorySource {
 
 export interface StoryWithSources extends Story {
   sources: StorySource[];
+  tags: StoryTag[];
 }
 
 export interface FeedCursor {

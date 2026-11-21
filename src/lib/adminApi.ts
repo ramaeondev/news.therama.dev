@@ -70,3 +70,28 @@ export const setStoryStatus = (storyId: string, status: AdminStatus, note?: stri
     p_status: status,
     p_note: note ?? null,
   });
+
+export interface MergeSuggestion {
+  suggestion_id: string;
+  score: number;
+  created_at: string;
+  a_id: string; a_headline: string; a_status: AdminStatus; a_first_published_at: string | null;
+  a_source_name: string | null; a_source_domain: string | null; a_url: string | null; a_source_count: number;
+  b_id: string; b_headline: string; b_status: AdminStatus; b_first_published_at: string | null;
+  b_source_name: string | null; b_source_domain: string | null; b_url: string | null; b_source_count: number;
+}
+
+export const fetchMergeSuggestions = (limit = 50, offset = 0) =>
+  adminRpc<MergeSuggestion[]>("admin_list_merge_suggestions", { p_limit: limit, p_offset: offset });
+
+export const fetchMergeSuggestionCount = () => adminRpc<number>("admin_merge_suggestion_count", {});
+
+/** Moves `mergeId`'s articles onto `keepId` and archives `mergeId` (its URL redirects). */
+export const mergeStories = (keepId: string, mergeId: string) =>
+  adminRpc<{ kept: string; merged: string; articles_moved: number }>("admin_merge_stories", {
+    p_keep_story_id: keepId,
+    p_merge_story_id: mergeId,
+  });
+
+export const dismissSuggestion = (suggestionId: string) =>
+  adminRpc<{ suggestion_id: string; status: string }>("admin_dismiss_suggestion", { p_suggestion_id: suggestionId });

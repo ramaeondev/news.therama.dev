@@ -1,13 +1,10 @@
 import { differenceInCalendarDays, formatDistanceToNowStrict } from "date-fns";
 
-export const FALLBACK_TZ = "Asia/Kolkata";
+import { DEFAULT_TZ } from "@/lib/timezone";
 
+/** Fallback when no zone is passed: IST, the site default. Components pass useTimeZone().timeZone. */
 export function readerTimeZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || FALLBACK_TZ;
-  } catch {
-    return FALLBACK_TZ;
-  }
+  return DEFAULT_TZ;
 }
 
 /** Calendar date (YYYY-MM-DD) of an instant in a time zone. */

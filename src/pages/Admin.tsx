@@ -12,14 +12,18 @@ import { LotusMark } from "@/components/Logo";
 import { ApiError } from "@/lib/api";
 import { loadSession, signIn, signOut } from "@/lib/auth";
 import {
-  AuthRequiredError, fetchAdminStories, fetchStatusCounts, setStoryStatus, type AdminStatus, type AdminStory,
+  AuthRequiredError, fetchAdminStories, fetchMergeSuggestionCount, fetchStatusCounts, setStoryStatus, type AdminStatus, type AdminStory,
 } from "@/lib/adminApi";
+import { DuplicatesPanel } from "@/components/admin/DuplicatesPanel";
 import { absoluteTime, relativeTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { useTimeZone } from "@/lib/timezone-context";
 
 const PAGE = 50;
-const TABS: { key: AdminStatus; label: string }[] = [
+type TabKey = AdminStatus | "duplicates";
+const TABS: { key: TabKey; label: string }[] = [
   { key: "pending_review", label: "Pending" },
+  { key: "duplicates", label: "Possible duplicates" },
   { key: "published", label: "Published" },
   { key: "rejected", label: "Rejected" },
   { key: "archived", label: "Archived" },
@@ -98,6 +102,7 @@ const DONE_TEXT: Record<AdminStatus, string> = {
 
 function StoryRow({ story, onAction, busyId }: { story: AdminStory; onAction: (s: AdminStory, to: AdminStatus) => void; busyId: string | null }) {
   const busy = busyId === story.id;
+  const { timeZone } = useTimeZone();
   return (
     <li className="rounded-lg border p-4">
       <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -108,7 +113,7 @@ function StoryRow({ story, onAction, busyId }: { story: AdminStory; onAction: (s
         )}
         {story.source_trust_score != null && <Badge variant="secondary">trust {story.source_trust_score}</Badge>}
         {story.first_published_at && (
-          <time dateTime={story.first_published_at} title={absoluteTime(story.first_published_at)}>
+          <time dateTime={story.first_published_at} title={absoluteTime(story.first_published_at, timeZone)}>
             {relativeTime(story.first_published_at)}
           </time>
         )}
@@ -139,7 +144,7 @@ function StoryRow({ story, onAction, busyId }: { story: AdminStory; onAction: (s
 }
 
 function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
-  const [tab, setTab] = useState<AdminStatus>("pending_review");
+  const [tab, setTab] = useState<TabKey>("pending_review");
   const [busyId, setBusyId] = useState<string | null>(null);
   const qc = useQueryClient();
 
@@ -153,15 +158,17 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   };
 
   const counts = useQuery({ queryKey: ["admin", "counts"], queryFn: fetchStatusCounts, retry: false });
+  const dupCount = useQuery({ queryKey: ["admin", "dup-count"], queryFn: fetchMergeSuggestionCount, retry: false });
+  const statusTab: AdminStatus = tab === "duplicates" ? "pending_review" : tab;
   const list = useInfiniteQuery({
-    queryKey: ["admin", "list", tab],
-    queryFn: ({ pageParam }) => fetchAdminStories(tab, PAGE, pageParam),
+    queryKey: ["admin", "list", statusTab],
+    queryFn: ({ pageParam }) => fetchAdminStories(statusTab, PAGE, pageParam),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => (last.length < PAGE ? undefined : pages.length * PAGE),
     retry: false,
   });
   // Expired session or lost admin rights: drop back to the sign-in form.
-  const authError = [counts.error, list.error].find((e) => e instanceof AuthRequiredError);
+  const authError = [counts.error, list.error, dupCount.error].find((e) => e instanceof AuthRequiredError);
   useEffect(() => {
     if (authError) {
       qc.removeQueries({ queryKey: ["admin"] });
@@ -217,14 +224,16 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           >
             {t.label}
             <span className={cn("rounded-full px-1.5 text-xs", tab === t.key ? "bg-primary-foreground/20" : "bg-muted")}>
-              {counts.data ? counts.data[t.key] : "…"}
+              {t.key === "duplicates" ? (dupCount.data ?? "…") : counts.data ? counts.data[t.key] : "…"}
             </span>
           </button>
         ))}
       </div>
 
       <div role="tabpanel">
-        {list.isPending ? (
+        {tab === "duplicates" ? (
+          <DuplicatesPanel onAuthError={handleAuthError} />
+        ) : list.isPending ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading" /></div>
         ) : list.isError ? (
           <ErrorPanel onRetry={() => list.refetch()} retrying={list.isFetching} />

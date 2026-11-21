@@ -1,6 +1,6 @@
 // Read-only client for the AI News API (schema "ai_news" on the self-hosted Supabase at
 // https://api-v3.therama.dev). Contract: docs/api.yaml. No login; the publishable key is public.
-import type { FeedCursor, Story, StorySource, StoryWithSources } from "@/types/news";
+import type { FeedCursor, Story, StorySource, StoryTag, StoryWithSources, TaxonomyItem } from "@/types/news";
 
 export const API_URL = ((import.meta.env.VITE_SUPABASE_URL as string | undefined) || "https://api-v3.therama.dev").replace(/\/$/, "");
 export const API_KEY =
@@ -8,7 +8,7 @@ export const API_KEY =
 
 export const PAGE_SIZE = 20;
 export const STORY_COLUMNS =
-  "id,headline,description,summary,story_type,importance_score,first_published_at,last_updated_at,source_count";
+  "id,headline,description,summary,story_type,importance_score,first_published_at,last_updated_at,source_count,image_url,image_attribution";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -63,17 +63,46 @@ export function keysetFilter(c: FeedCursor): string {
 
 const inList = (ids: string[]) => `in.(${ids.join(",")})`;
 
-export function attachSources(stories: Story[], sources: StorySource[]): StoryWithSources[] {
+const TAG_ORDER: Record<StoryTag["kind"], number> = { company: 0, tool: 1, category: 2 };
+
+export function attachSources(stories: Story[], sources: StorySource[], tags: StoryTag[] = []): StoryWithSources[] {
   const byStory = new Map<string, StorySource[]>();
   for (const s of sources) {
     const list = byStory.get(s.story_id) ?? [];
     list.push(s);
     byStory.set(s.story_id, list);
   }
+  const tagsByStory = new Map<string, StoryTag[]>();
+  for (const t of tags) {
+    const list = tagsByStory.get(t.story_id) ?? [];
+    list.push(t);
+    tagsByStory.set(t.story_id, list);
+  }
   return stories.map((story) => ({
     ...story,
     sources: (byStory.get(story.id) ?? []).sort((a, b) => Number(b.is_primary) - Number(a.is_primary)),
+    tags: (tagsByStory.get(story.id) ?? []).sort(
+      (a, b) => TAG_ORDER[a.kind] - TAG_ORDER[b.kind] || Number(b.is_primary) - Number(a.is_primary) || a.name.localeCompare(b.name),
+    ),
   }));
+}
+
+/** Company/tool/category tags for many stories in one request. */
+export async function fetchTagsFor(storyIds: string[], signal?: AbortSignal): Promise<StoryTag[]> {
+  if (!storyIds.length) return [];
+  return get<StoryTag[]>("v_published_story_tags", { story_id: inList(storyIds) }, signal);
+}
+
+/** Filter options (only tags that have published stories). */
+export async function fetchTaxonomy(signal?: AbortSignal): Promise<TaxonomyItem[]> {
+  return get<TaxonomyItem[]>("v_taxonomy", { story_count: "gt.0", order: "kind.asc,story_count.desc,name.asc" }, signal);
+}
+
+/** Where an old story id now lives after an admin merge, or null. */
+export async function fetchRedirect(id: string, signal?: AbortSignal): Promise<string | null> {
+  if (!isUuid(id)) return null;
+  const rows = await get<{ id: string; merged_into_story_id: string }[]>("v_story_redirects", { id: `eq.${id}` }, signal);
+  return rows[0]?.merged_into_story_id ?? null;
 }
 
 export async function fetchSourcesFor(storyIds: string[], signal?: AbortSignal): Promise<StorySource[]> {
@@ -82,7 +111,9 @@ export async function fetchSourcesFor(storyIds: string[], signal?: AbortSignal):
 }
 
 async function withSources(stories: Story[], signal?: AbortSignal) {
-  return attachSources(stories, await fetchSourcesFor(stories.map((s) => s.id), signal));
+  const ids = stories.map((s) => s.id);
+  const [sources, tags] = await Promise.all([fetchSourcesFor(ids, signal), fetchTagsFor(ids, signal)]);
+  return attachSources(stories, sources, tags);
 }
 
 /** One page of the home feed, newest publisher time first. */
@@ -126,6 +157,9 @@ export interface SearchParams {
   q?: string;
   from?: string;
   to?: string;
+  company?: string;
+  tool?: string;
+  category?: string;
   limit?: number;
   offset?: number;
 }
@@ -141,9 +175,9 @@ export async function searchStories(p: SearchParams, signal?: AbortSignal): Prom
       p_query: p.q?.trim() || null,
       p_from: p.from || null,
       p_to: p.to || null,
-      p_company_slug: null,
-      p_tool_slug: null,
-      p_category_slug: null,
+      p_company_slug: p.company || null,
+      p_tool_slug: p.tool || null,
+      p_category_slug: p.category || null,
       p_limit: p.limit ?? PAGE_SIZE,
       p_offset: p.offset ?? 0,
     },
@@ -163,10 +197,11 @@ export async function fetchBySource(domain: string, offset = 0, limit = PAGE_SIZ
   const ids = [...new Set(sources.map((s) => s.story_id))];
   const stories = await get<Story[]>("v_published_stories", { select: STORY_COLUMNS, id: inList(ids) }, signal);
   const byId = new Map(stories.map((s) => [s.id, s]));
-  const allSources = await fetchSourcesFor(ids, signal);
+  const [allSources, tags] = await Promise.all([fetchSourcesFor(ids, signal), fetchTagsFor(ids, signal)]);
   return attachSources(
     ids.map((id) => byId.get(id)).filter((s): s is Story => Boolean(s)),
     allSources,
+    tags,
   );
 }
 

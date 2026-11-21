@@ -6,6 +6,8 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Highlight } from "@/components/Highlight";
 import { FEATURES } from "@/config/features";
 import { Badge } from "@/components/ui/badge";
+import { TagChips } from "@/components/TagChips";
+import { StoryImage } from "@/components/StoryImage";
 
 export function StoryCard({ story, query }: { story: StoryWithSources; query?: string }) {
   const primary = story.sources[0];
@@ -38,7 +40,12 @@ export function StoryCard({ story, query }: { story: StoryWithSources; query?: s
             <Highlight text={story.description} query={query} />
           </p>
         )}
+        <TagChips tags={story.tags} max={3} className="mt-2.5" />
       </div>
+      <StoryImage
+        src={story.image_url}
+        className="hidden h-20 w-32 shrink-0 self-center rounded-md sm:block md:h-24 md:w-40"
+      />
       {primary && (
         <a
           href={primary.original_url}

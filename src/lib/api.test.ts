@@ -35,9 +35,17 @@ describe("buildUrl / keysetFilter", () => {
 
 describe("fetchFeedPage", () => {
   it("requests the ai_news profile, orders by publisher time and joins sources in one call", async () => {
-    const f = mockFetch([story("1", "2026-11-20T10:00:00Z"), story("2", "2026-11-20T09:00:00Z")], [source("2"), source("1")]);
+    const f = mockFetch(
+      [story("1", "2026-11-20T10:00:00Z"), story("2", "2026-11-20T09:00:00Z")],
+      [source("2"), source("1")],
+      [{ story_id: "1", kind: "category", slug: "research", name: "Research", is_primary: true },
+       { story_id: "1", kind: "company", slug: "openai", name: "OpenAI", is_primary: true }],
+    );
     const page = await fetchFeedPage({ t: "2026-11-21T00:00:00Z", id: "z" });
-    expect(f).toHaveBeenCalledTimes(2);
+    expect(f).toHaveBeenCalledTimes(3);
+    expect(decodeURIComponent(f.mock.calls[2][0])).toContain("v_published_story_tags?story_id=in.(1,2)");
+    expect(page[0].tags.map((t) => t.kind)).toEqual(["company", "category"]);
+    expect(page[1].tags).toEqual([]);
     const [url, init] = f.mock.calls[0];
     expect(decodeURIComponent(url)).toContain("order=first_published_at.desc,id.desc");
     expect(decodeURIComponent(url)).toContain('or=(first_published_at.lt."2026-11-21T00:00:00Z"');
@@ -54,6 +62,13 @@ describe("fetchStory", () => {
     expect(await fetchStory("not-a-uuid")).toBeNull();
     expect(f).not.toHaveBeenCalled();
   });
+  it("follows merged-story redirects", async () => {
+    const { fetchRedirect } = await import("@/lib/api");
+    const f = mockFetch([{ id: "11111111-1111-1111-1111-111111111111", merged_into_story_id: "22222222-2222-2222-2222-222222222222" }]);
+    expect(await fetchRedirect("11111111-1111-1111-1111-111111111111")).toBe("22222222-2222-2222-2222-222222222222");
+    expect(decodeURIComponent(f.mock.calls[0][0])).toContain("v_story_redirects?id=eq.");
+    expect(await fetchRedirect("nope")).toBeNull();
+  });
   it("returns null when the story is not public", async () => {
     mockFetch([]);
     expect(await fetchStory("11111111-1111-1111-1111-111111111111")).toBeNull();
@@ -62,13 +77,15 @@ describe("fetchStory", () => {
 
 describe("searchStories", () => {
   it("posts to the RPC with Content-Profile and re-sorts by publisher time", async () => {
-    const f = mockFetch([story("old", "2026-11-01T00:00:00Z"), story("new", "2026-11-20T00:00:00Z")], []);
-    const res = await searchStories({ q: " openai ", limit: 20, offset: 0 });
+    const f = mockFetch([story("old", "2026-11-01T00:00:00Z"), story("new", "2026-11-20T00:00:00Z")], [], []);
+    const res = await searchStories({ q: " openai ", limit: 20, offset: 0, company: "openai", category: "research" });
     const [url, init] = f.mock.calls[0];
     expect(url).toContain("/rpc/search_published_stories");
     expect(init.method).toBe("POST");
     expect(init.headers["Content-Profile"]).toBe("ai_news");
-    expect(JSON.parse(init.body)).toMatchObject({ p_query: "openai", p_limit: 20, p_offset: 0, p_from: null });
+    expect(JSON.parse(init.body)).toMatchObject({
+      p_query: "openai", p_limit: 20, p_offset: 0, p_from: null, p_company_slug: "openai", p_tool_slug: null, p_category_slug: "research",
+    });
     expect(res.map((s) => s.id)).toEqual(["new", "old"]);
   });
 });

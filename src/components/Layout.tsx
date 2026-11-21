@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
+import { TimeZonePicker } from "@/components/TimeZonePicker";
 import { SearchBox } from "@/components/SearchBox";
 import { OfflineBanner } from "@/components/States";
 import { StoryListSkeleton } from "@/components/StoryCard";
@@ -61,6 +62,7 @@ export function Layout() {
                 <SearchBox autoFocus onDone={() => setSheetOpen(false)} />
               </SheetContent>
             </Sheet>
+            <TimeZonePicker />
             <ThemeToggle />
           </nav>
         </div>

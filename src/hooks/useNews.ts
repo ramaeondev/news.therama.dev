@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
-  PAGE_SIZE, fetchBySource, fetchSocialLinks, fetchFeedPage, fetchLatestMarker, fetchStory, searchStories, type SearchParams,
+  PAGE_SIZE, fetchBySource, fetchSocialLinks, fetchTaxonomy, fetchFeedPage, fetchLatestMarker, fetchStory, searchStories, type SearchParams,
 } from "@/lib/api";
 import type { FeedCursor, StoryWithSources } from "@/types/news";
 
@@ -43,7 +43,7 @@ export function useStory(id: string | undefined) {
 
 export function useSearch(params: Omit<SearchParams, "offset" | "limit">) {
   return useInfiniteQuery({
-    queryKey: ["search", params.q ?? "", params.from ?? "", params.to ?? ""],
+    queryKey: ["search", params.q ?? "", params.from ?? "", params.to ?? "", params.company ?? "", params.tool ?? "", params.category ?? ""],
     queryFn: ({ pageParam, signal }) => searchStories({ ...params, offset: pageParam, limit: PAGE_SIZE }, signal),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => (last.length < PAGE_SIZE ? undefined : pages.length * PAGE_SIZE),
@@ -91,5 +91,14 @@ export function useSocialLinks() {
     queryKey: ["social-links"],
     queryFn: ({ signal }) => fetchSocialLinks(signal),
     staleTime: 60 * 60_000,
+  });
+}
+
+/** Company / tool / category filter options. */
+export function useTaxonomy() {
+  return useQuery({
+    queryKey: ["taxonomy"],
+    queryFn: ({ signal }) => fetchTaxonomy(signal),
+    staleTime: 10 * 60_000,
   });
 }

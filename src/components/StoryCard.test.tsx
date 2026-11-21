@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StoryCard } from "@/components/StoryCard";
@@ -16,6 +16,11 @@ const story: StoryWithSources = {
   first_published_at: new Date(Date.now() - 2 * 3_600_000).toISOString(),
   last_updated_at: null,
   source_count: 1,
+  image_url: "https://cdn.example/img.jpg",
+  tags: [
+    { story_id: "11111111-1111-1111-1111-111111111111", kind: "company", slug: "openai", name: "OpenAI", is_primary: true },
+    { story_id: "11111111-1111-1111-1111-111111111111", kind: "category", slug: "model-releases", name: "Model Releases", is_primary: true },
+  ],
   sources: [{
     story_id: "11111111-1111-1111-1111-111111111111", article_id: "a", title: "OpenAI ships a new model",
     original_url: "https://openai.com/index/new-model", author: null, published_at: null, source_id: "s",
@@ -47,6 +52,22 @@ describe("StoryCard", () => {
     expect(ext).toHaveAttribute("href", "https://openai.com/index/new-model");
     expect(ext).toHaveAttribute("target", "_blank");
     expect(ext).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("shows topic chips linking to filtered search, and the publisher image", () => {
+    const { container } = renderCard();
+    expect(screen.getByRole("link", { name: "OpenAI" })).toHaveAttribute("href", "/search?company=openai");
+    expect(screen.getByRole("link", { name: "Model Releases" })).toHaveAttribute("href", "/search?category=model-releases");
+    const img = container.querySelector("img[src='https://cdn.example/img.jpg']");
+    expect(img).toHaveAttribute("referrerpolicy", "no-referrer");
+    expect(img).toHaveAttribute("loading", "lazy");
+  });
+
+  it("hides an image that fails to load", () => {
+    const { container } = renderCard();
+    const img = container.querySelector("img[src='https://cdn.example/img.jpg']")!;
+    fireEvent.error(img);
+    expect(container.querySelector("img[src='https://cdn.example/img.jpg']")).toBeNull();
   });
 
   it("highlights search terms", () => {

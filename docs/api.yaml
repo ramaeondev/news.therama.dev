@@ -18,8 +18,13 @@ info:
       - `first_published_at` = when the publisher published it. **Sort and display by this.**
       - `published_at`       = when it went live on news.therama.dev.
 
-    Not filled yet (null / empty until enrichment is built): `summary`, `importance_score`,
-    `slug`, `primary_media_id`, and the category / company / tool views.
+    Filled by rule-based enrichment (no AI): company / tool / category tags
+    (`v_published_story_tags`, `v_taxonomy`) and `image_url` (the publisher's own image,
+    linked from their site; show `image_attribution`). Not filled yet: `summary`,
+    `importance_score`, `slug`.
+
+    Merged stories: when the admin merges two stories, the merged one stops being public and
+    `v_story_redirects` maps its id to the story that now holds its sources.
 
     Filtering, sorting and paging on the GET endpoints use standard PostgREST query syntax
     (`column=eq.value`, `order=col.desc`, `limit`, `offset`, `select=col1,col2`).
@@ -108,11 +113,82 @@ paths:
                 items: { $ref: '#/components/schemas/StorySource' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /v_published_story_tags:
+    get:
+      tags: [Taxonomy]
+      operationId: listStoryTags
+      summary: Company, tool and category tags for stories (one call per feed page)
+      description: '`?story_id=in.(<uuid1>,<uuid2>)`. Filter with `kind=eq.company` etc.'
+      parameters:
+        - $ref: '#/components/parameters/AcceptProfile'
+        - name: story_id
+          in: query
+          schema: { type: string }
+        - name: kind
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StoryTag' }
+
+  /v_taxonomy:
+    get:
+      tags: [Taxonomy]
+      operationId: listTaxonomy
+      summary: Filter options (companies, tools, categories) with published-story counts
+      description: '`?story_count=gt.0&order=kind.asc,story_count.desc`'
+      parameters:
+        - $ref: '#/components/parameters/AcceptProfile'
+        - $ref: '#/components/parameters/Order'
+        - name: kind
+          in: query
+          schema: { type: string }
+        - name: story_count
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Taxonomy items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TaxonomyItem' }
+
+  /v_story_redirects:
+    get:
+      tags: [Stories]
+      operationId: getStoryRedirect
+      summary: Where a merged story's id now points
+      description: '`?id=eq.<uuid>`; an empty array means no redirect.'
+      parameters:
+        - $ref: '#/components/parameters/AcceptProfile'
+        - name: id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Redirect rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    merged_into_story_id: { type: string, format: uuid }
+
   /v_published_story_categories:
     get:
       tags: [Taxonomy]
       operationId: listStoryCategories
-      summary: Categories per story (empty until enrichment is built)
+      summary: Categories per story
       parameters:
         - $ref: '#/components/parameters/AcceptProfile'
         - name: story_id
@@ -131,7 +207,7 @@ paths:
     get:
       tags: [Taxonomy]
       operationId: listStoryCompanies
-      summary: Companies mentioned per story (empty until enrichment is built)
+      summary: Companies mentioned per story
       parameters:
         - $ref: '#/components/parameters/AcceptProfile'
         - name: story_id
@@ -150,7 +226,7 @@ paths:
     get:
       tags: [Taxonomy]
       operationId: listStoryTools
-      summary: AI tools mentioned per story (empty until enrichment is built)
+      summary: AI tools mentioned per story
       parameters:
         - $ref: '#/components/parameters/AcceptProfile'
         - name: story_id
@@ -175,7 +251,7 @@ paths:
         (web-search syntax: `"exact phrase"`, `-exclude`, `or`).
         All parameters are optional; `{}` returns the latest stories.
         Results are ordered by `published_at` desc (site publication time).
-        Max 100 per call. Company/tool/category filters return nothing until enrichment exists.
+        Max 100 per call. Company/tool/category filters use the rule-based tags.
       parameters:
         - $ref: '#/components/parameters/ContentProfile'
       requestBody:
@@ -269,6 +345,8 @@ components:
         created_at:         { type: string, format: date-time }
         updated_at:         { type: string, format: date-time }
         source_count:       { type: integer, description: Number of published source articles }
+        image_url:          { type: [string, 'null'], format: uri, description: "Publisher's own image (https), linked from their site, not stored here" }
+        image_attribution:  { type: [string, 'null'], description: 'Who the image belongs to (the source name); show it as a caption' }
       example:
         id: ae893d94-f3ca-4045-af6a-895b1b223288
         slug: null
@@ -299,6 +377,23 @@ components:
         source_domain:     { type: string, example: openai.com }
         relationship_type: { type: string, enum: [primary_coverage, independent_coverage, follow_up, correction, related] }
         is_primary:        { type: boolean }
+
+    StoryTag:
+      type: object
+      properties:
+        story_id:   { type: string, format: uuid }
+        kind:       { type: string, enum: [company, tool, category] }
+        slug:       { type: string, example: openai }
+        name:       { type: string, example: OpenAI }
+        is_primary: { type: boolean }
+
+    TaxonomyItem:
+      type: object
+      properties:
+        kind:        { type: string, enum: [company, tool, category] }
+        slug:        { type: string }
+        name:        { type: string }
+        story_count: { type: integer }
 
     StoryCategory:
       type: object
@@ -364,6 +459,7 @@ x-internal-ingest-api:
         author:       { type: string }
         language:     { type: string, default: en }
         published_at: { type: string, note: 'ISO 8601 or RFC 822; unparseable -> null' }
+        image_url:    { type: string, note: 'optional; https RSS image. Missing -> og:image looked up in the background' }
       responses:
         201: { status: created, article_id: uuid, story_id: uuid, publication_status: 'published | pending_review' }
         200: '{ status: duplicate, article_id } | { status: skipped_old } (older than AI_NEWS_MAX_AGE_DAYS, default 30)'

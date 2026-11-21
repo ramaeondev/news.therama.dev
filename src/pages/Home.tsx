@@ -12,6 +12,8 @@ import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { SOURCES } from "@/config/sources";
 import { dayLabel, groupByDay } from "@/lib/time";
+import { zoneAbbrev } from "@/lib/timezone";
+import { useTimeZone } from "@/lib/timezone-context";
 
 export default function Home() {
   const feed = useFeed();
@@ -20,7 +22,8 @@ export default function Home() {
     const seen = new Set<string>();
     return (feed.data?.pages.flat() ?? []).filter((s) => !seen.has(s.id) && seen.add(s.id));
   }, [feed.data]);
-  const groups = useMemo(() => groupByDay(stories, (s) => s.first_published_at), [stories]);
+  const { timeZone } = useTimeZone();
+  const groups = useMemo(() => groupByDay(stories, (s) => s.first_published_at, timeZone), [stories, timeZone]);
   const hasNew = useHasNewStories(stories[0]);
 
   const showNew = async () => {
@@ -34,7 +37,9 @@ export default function Home() {
       <Seo path="/" />
       <section aria-labelledby="feed-heading" className="mx-auto w-full max-w-3xl">
         <h1 id="feed-heading" className="text-2xl font-bold tracking-tight md:text-3xl">Latest AI news</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Updated continuously from {SOURCES.length} sources.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Updated continuously from {SOURCES.length} sources · times in {zoneAbbrev(timeZone)}
+        </p>
 
         {hasNew && (
           <div className="sticky top-16 z-30 mt-4 flex justify-center">
@@ -54,9 +59,9 @@ export default function Home() {
           ) : (
             <>
               {groups.map((g) => (
-                <section key={g.key} aria-label={dayLabel(g.key)} className="mb-6">
+                <section key={g.key} aria-label={dayLabel(g.key, new Date(), timeZone)} className="mb-6">
                   <h2 className="sticky top-14 z-20 -mx-1 mb-2 bg-background/90 px-1 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    {g.key === "unknown" ? "Undated" : dayLabel(g.key)}
+                    {g.key === "unknown" ? "Undated" : dayLabel(g.key, new Date(), timeZone)}
                   </h2>
                   <div className="space-y-3">
                     {g.items.map((s) => <StoryCard key={s.id} story={s} />)}

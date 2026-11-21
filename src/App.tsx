@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
+import { TimeZoneProvider } from "@/components/TimeZoneProvider";
 import { Layout } from "@/components/Layout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StoryListSkeleton } from "@/components/StoryCard";
@@ -25,6 +26,7 @@ export default function App() {
     <ErrorBoundary>
       <HelmetProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <TimeZoneProvider>
           <QueryClientProvider client={queryClient}>
             <TooltipProvider delayDuration={300}>
               <BrowserRouter>
@@ -46,6 +48,7 @@ export default function App() {
               <Toaster />
             </TooltipProvider>
           </QueryClientProvider>
+          </TimeZoneProvider>
         </ThemeProvider>
       </HelmetProvider>
     </ErrorBoundary>
