@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
-  PAGE_SIZE, fetchBySource, fetchFeedPage, fetchLatestMarker, fetchStory, searchStories, type SearchParams,
+  PAGE_SIZE, fetchBySource, fetchSocialLinks, fetchFeedPage, fetchLatestMarker, fetchStory, searchStories, type SearchParams,
 } from "@/lib/api";
 import type { FeedCursor, StoryWithSources } from "@/types/news";
 
@@ -83,4 +83,13 @@ export function useOnline(): boolean {
     };
   }, []);
   return online;
+}
+
+/** Social links rarely change: cache for an hour. */
+export function useSocialLinks() {
+  return useQuery({
+    queryKey: ["social-links"],
+    queryFn: ({ signal }) => fetchSocialLinks(signal),
+    staleTime: 60 * 60_000,
+  });
 }

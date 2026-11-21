@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Seo } from "@/components/Seo";
 import { SOURCES } from "@/config/sources";
+import { SocialLinks } from "@/components/SocialLinks";
 
 export default function About() {
   return (
@@ -26,8 +27,9 @@ export default function About() {
       <p>When a story shows an "AI summary", it was generated automatically. Always read the original for full details.</p>
       <h2>Contact</h2>
       <p>
-        Built by <a href="https://therama.dev" target="_blank" rel="noopener noreferrer">therama.dev</a>.
+        Built by <a href="https://therama.dev" target="_blank" rel="noopener noreferrer">therama.dev</a>. Find us on:
       </p>
+      <SocialLinks className="not-prose" />
     </div>
   );
 }

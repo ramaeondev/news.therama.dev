@@ -7,6 +7,7 @@ import { StoryCard, StoryListSkeleton } from "@/components/StoryCard";
 import { EmptyState, ErrorPanel } from "@/components/States";
 import { LoadMore } from "@/components/LoadMore";
 import { SourceFavicon } from "@/components/SourceFavicon";
+import { SocialLinks } from "@/components/SocialLinks";
 import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { SOURCES } from "@/config/sources";
@@ -90,6 +91,7 @@ export default function Home() {
             <h2 className="mb-2 font-semibold text-foreground">About</h2>
             AI news from official company blogs and tech publications, with a link to every original story.{" "}
             <Link to="/about" className="font-medium text-primary hover:underline">Learn more</Link>
+            <SocialLinks variant="icons" className="mt-3" />
           </div>
         </div>
       </aside>

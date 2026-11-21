@@ -27,13 +27,13 @@ export function buildUrl(path: string, params: Params = {}): string {
   return `${API_URL}/rest/v1/${path}${qs ? `?${qs}` : ""}`;
 }
 
-async function request<T>(url: string, init: RequestInit = {}, signal?: AbortSignal): Promise<T> {
+async function request<T>(url: string, init: RequestInit = {}, signal?: AbortSignal, profile = "ai_news"): Promise<T> {
   let resp: Response;
   try {
     resp = await fetch(url, {
       ...init,
       signal,
-      headers: { apikey: API_KEY, "Accept-Profile": "ai_news", ...(init.headers || {}) },
+      headers: { apikey: API_KEY, "Accept-Profile": profile, ...(init.headers || {}) },
     });
   } catch (err) {
     if ((err as Error).name === "AbortError") throw err;
@@ -168,4 +168,24 @@ export async function fetchBySource(domain: string, offset = 0, limit = PAGE_SIZ
     ids.map((id) => byId.get(id)).filter((s): s is Story => Boolean(s)),
     allSources,
   );
+}
+
+/** Row of static.social_links (shared reference data, also used by portfolio.therama.dev). */
+export interface SocialLink {
+  id: string;
+  platform: string;
+  url: string;
+  display_name: string;
+  sort_order: number;
+}
+
+/** Active social links from the shared "static" schema, in display order. */
+export async function fetchSocialLinks(signal?: AbortSignal): Promise<SocialLink[]> {
+  const rows = await request<SocialLink[]>(
+    buildUrl("social_links", { select: "id,platform,url,display_name,sort_order", is_active: "eq.true", order: "sort_order.asc" }),
+    {},
+    signal,
+    "static",
+  );
+  return rows.filter((r) => /^https?:\/\//i.test(r.url));
 }

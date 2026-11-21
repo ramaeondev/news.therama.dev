@@ -92,3 +92,19 @@ describe("attachSources", () => {
     expect(s.sources.map((x) => x.is_primary)).toEqual([true, false]);
   });
 });
+
+describe("fetchSocialLinks", () => {
+  it("reads active links from the static profile in order and drops non-http urls", async () => {
+    const { fetchSocialLinks } = await import("@/lib/api");
+    const f = mockFetch([
+      { id: "1", platform: "github", url: "https://github.com/ramaeon", display_name: "GitHub", sort_order: 1 },
+      { id: "2", platform: "bad", url: "javascript:alert(1)", display_name: "Bad", sort_order: 2 },
+    ]);
+    const links = await fetchSocialLinks();
+    const [url, init] = f.mock.calls[0];
+    expect(init.headers["Accept-Profile"]).toBe("static");
+    expect(decodeURIComponent(url)).toContain("is_active=eq.true");
+    expect(decodeURIComponent(url)).toContain("order=sort_order.asc");
+    expect(links.map((l) => l.display_name)).toEqual(["GitHub"]);
+  });
+});
