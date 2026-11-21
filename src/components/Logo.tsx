@@ -25,13 +25,13 @@ export function LotusMark({ className, title }: { className?: string; title?: st
   );
 }
 
-/** Header lockup: lotus + "therama AI News". */
+/** Header lockup: lotus + "AI News". */
 export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("flex items-center gap-2 font-semibold tracking-tight", className)}>
       <LotusMark className="h-7 w-7" />
       <span>
-        therama <span className="text-primary">AI News</span>
+        <span className="text-primary">AI</span> News
       </span>
     </span>
   );

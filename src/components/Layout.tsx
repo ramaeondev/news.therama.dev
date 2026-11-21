@@ -44,7 +44,7 @@ export function Layout() {
       </a>
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="container flex h-14 items-center gap-4">
-          <Link to="/" className="shrink-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="therama AI News home">
+          <Link to="/" className="shrink-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="AI News home">
             <Logo />
           </Link>
           <SearchBox ref={searchRef} className="mx-auto hidden w-full max-w-md md:block" />

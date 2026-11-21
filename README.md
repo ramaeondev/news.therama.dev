@@ -1,4 +1,4 @@
-# news.therama.dev
+# news.therama.dev: AI News
 
 A fast, read-only AI news site. It shows the latest stories from official AI company blogs and tech publications, and every story links to its original publisher.
 

@@ -285,7 +285,7 @@ export default function Admin() {
   return (
     <>
       <Helmet>
-        <title>Admin | therama AI News</title>
+        <title>Admin | AI News</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       {signedIn ? <Dashboard onSignedOut={() => setSignedIn(false)} /> : <Login onDone={() => setSignedIn(true)} />}

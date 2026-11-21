@@ -6,10 +6,10 @@ import { SocialLinks } from "@/components/SocialLinks";
 export default function About() {
   return (
     <div className="prose prose-zinc mx-auto max-w-2xl dark:prose-invert">
-      <Seo title="About" description="How therama AI News collects and presents AI news." path="/about" />
-      <h1>About therama AI News</h1>
+      <Seo title="About" description="How AI News collects and presents AI news." path="/about" />
+      <h1>About AI News</h1>
       <p>
-        therama AI News is a single, fast feed of what's happening in artificial intelligence: model releases,
+        AI News is a single, fast feed of what's happening in artificial intelligence: model releases,
         product launches, research, funding and policy.
       </p>
       <h2>How it works</h2>
