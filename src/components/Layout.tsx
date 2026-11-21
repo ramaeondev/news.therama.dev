@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 import { SearchBox } from "@/components/SearchBox";
 import { OfflineBanner } from "@/components/States";
 import { StoryListSkeleton } from "@/components/StoryCard";
@@ -42,9 +43,8 @@ export function Layout() {
       </a>
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="container flex h-14 items-center gap-4">
-          <Link to="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight" aria-label="therama AI News home">
-            <img src="/favicon.svg" alt="" width={24} height={24} />
-            <span>therama <span className="text-primary">AI News</span></span>
+          <Link to="/" className="shrink-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="therama AI News home">
+            <Logo />
           </Link>
           <SearchBox ref={searchRef} className="mx-auto hidden w-full max-w-md md:block" />
           <nav aria-label="Main" className="ml-auto flex items-center md:ml-0">

@@ -4,15 +4,16 @@
 
 @layer base {
   :root {
-    /* zinc neutrals + indigo accent */
+    /* zinc neutrals + therama gold accent */
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 243 75% 59%;
+    --primary: 41 63% 33%;          /* #8A6A1F: white text passes WCAG AA */
     --primary-foreground: 0 0% 100%;
+    --brand: 40 59% 45%;            /* #B8892F: logo + wordmark on light */
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
@@ -23,7 +24,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 243 75% 59%;
+    --ring: 41 63% 40%;
     --radius: 0.625rem;
   }
 
@@ -34,8 +35,9 @@
     --card-foreground: 0 0% 96%;
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 96%;
-    --primary: 234 89% 74%;
-    --primary-foreground: 240 10% 6%;
+    --primary: 46 65% 52%;          /* #D4AF37 */
+    --primary-foreground: 30 10% 7%;
+    --brand: 46 65% 52%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 14%;
@@ -46,7 +48,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 17%;
     --input: 240 3.7% 17%;
-    --ring: 234 89% 74%;
+    --ring: 46 65% 52%;
   }
 }
 
