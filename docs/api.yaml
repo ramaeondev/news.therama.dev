@@ -1,0 +1,371 @@
+openapi: 3.1.0
+info:
+  title: AI News API (news.therama.dev)
+  version: 1.0.0
+  description: |
+    Read-only public API for the news.therama.dev frontend, served by the self-hosted
+    Supabase (PostgREST) at api-v3.therama.dev, schema `ai_news` (plan 003).
+
+    Every request needs two headers:
+      - `apikey: <SUPABASE_PUBLISHABLE_KEY>`  (public key, safe in browser code)
+      - `Accept-Profile: ai_news`             (for RPC POSTs also `Content-Profile: ai_news`)
+
+    Content model: a **story** is the public news item (page URL `/news/<story id>`).
+    Each story has one or more **source articles** (publisher links). Today every story
+    has exactly one source; merging coverage of the same event comes later.
+
+    Dates:
+      - `first_published_at` = when the publisher published it. **Sort and display by this.**
+      - `published_at`       = when it went live on news.therama.dev.
+
+    Not filled yet (null / empty until enrichment is built): `summary`, `importance_score`,
+    `slug`, `primary_media_id`, and the category / company / tool views.
+
+    Filtering, sorting and paging on the GET endpoints use standard PostgREST query syntax
+    (`column=eq.value`, `order=col.desc`, `limit`, `offset`, `select=col1,col2`).
+    Send `Prefer: count=exact` to get the total in the `Content-Range` response header.
+servers:
+  - url: https://api-v3.therama.dev/rest/v1
+security:
+  - apikey: []
+tags:
+  - name: Stories
+  - name: Taxonomy
+  - name: Search
+
+paths:
+  /v_published_stories:
+    get:
+      tags: [Stories]
+      operationId: listStories
+      summary: List published stories (news feed, story detail)
+      description: |
+        Latest feed: `?order=first_published_at.desc&limit=20`.
+        Single story: `?id=eq.<uuid>` and header `Accept: application/vnd.pgrst.object+json`
+        to get an object instead of an array.
+        Date range: `?first_published_at=gte.2026-11-01T00:00:00Z&first_published_at=lt.2026-11-08T00:00:00Z`.
+      parameters:
+        - $ref: '#/components/parameters/AcceptProfile'
+        - $ref: '#/components/parameters/Select'
+        - $ref: '#/components/parameters/Order'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/PreferCount'
+        - name: id
+          in: query
+          description: 'Filter by story id, e.g. `eq.ae893d94-f3ca-4045-af6a-895b1b223288`'
+          schema: { type: string }
+        - name: first_published_at
+          in: query
+          description: 'Range filter, e.g. `gte.2026-11-01T00:00:00Z` (repeat for lt.)'
+          schema: { type: string }
+        - name: story_type
+          in: query
+          description: 'e.g. `eq.news`'
+          schema: { type: string }
+      responses:
+        '200':
+          description: Stories
+          headers:
+            Content-Range:
+              $ref: '#/components/headers/ContentRange'
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Story' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v_story_sources:
+    get:
+      tags: [Stories]
+      operationId: listStorySources
+      summary: Publisher articles behind stories ("Read at OpenAI News" links)
+      description: |
+        For one story: `?story_id=eq.<uuid>&order=is_primary.desc,published_at.asc`.
+        For a feed page, fetch sources for many stories at once:
+        `?story_id=in.(<uuid1>,<uuid2>,...)`.
+      parameters:
+        - $ref: '#/components/parameters/AcceptProfile'
+        - $ref: '#/components/parameters/Select'
+        - $ref: '#/components/parameters/Order'
+        - $ref: '#/components/parameters/Limit'
+        - name: story_id
+          in: query
+          description: '`eq.<uuid>` or `in.(<uuid>,<uuid>)`'
+          schema: { type: string }
+        - name: source_domain
+          in: query
+          description: 'e.g. `eq.openai.com`'
+          schema: { type: string }
+      responses:
+        '200':
+          description: Source articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StorySource' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v_published_story_categories:
+    get:
+      tags: [Taxonomy]
+      operationId: listStoryCategories
+      summary: Categories per story (empty until enrichment is built)
+      parameters:
+        - $ref: '#/components/parameters/AcceptProfile'
+        - name: story_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Story ↔ category rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StoryCategory' }
+
+  /v_published_story_companies:
+    get:
+      tags: [Taxonomy]
+      operationId: listStoryCompanies
+      summary: Companies mentioned per story (empty until enrichment is built)
+      parameters:
+        - $ref: '#/components/parameters/AcceptProfile'
+        - name: story_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Story ↔ company rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StoryCompany' }
+
+  /v_published_story_tools:
+    get:
+      tags: [Taxonomy]
+      operationId: listStoryTools
+      summary: AI tools mentioned per story (empty until enrichment is built)
+      parameters:
+        - $ref: '#/components/parameters/AcceptProfile'
+        - name: story_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Story ↔ tool rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StoryTool' }
+
+  /rpc/search_published_stories:
+    post:
+      tags: [Search]
+      operationId: searchStories
+      summary: Full-text search with filters
+      description: |
+        English full-text search over headline, description and summary
+        (web-search syntax: `"exact phrase"`, `-exclude`, `or`).
+        All parameters are optional; `{}` returns the latest stories.
+        Results are ordered by `published_at` desc (site publication time).
+        Max 100 per call. Company/tool/category filters return nothing until enrichment exists.
+      parameters:
+        - $ref: '#/components/parameters/ContentProfile'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SearchRequest' }
+            example: { p_query: openai codex, p_from: '2026-11-01T00:00:00Z', p_limit: 20, p_offset: 0 }
+      responses:
+        '200':
+          description: Matching stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Story' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+components:
+  securitySchemes:
+    apikey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: Supabase publishable key (`sb_publishable_…`). Public by design. Never use the service-role key in a frontend.
+
+  parameters:
+    AcceptProfile:
+      name: Accept-Profile
+      in: header
+      required: true
+      schema: { type: string, const: ai_news }
+    ContentProfile:
+      name: Content-Profile
+      in: header
+      required: true
+      schema: { type: string, const: ai_news }
+    Select:
+      name: select
+      in: query
+      description: 'Columns to return, e.g. `id,headline,first_published_at,source_count`'
+      schema: { type: string }
+    Order:
+      name: order
+      in: query
+      description: 'e.g. `first_published_at.desc`'
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0 }
+    PreferCount:
+      name: Prefer
+      in: header
+      description: '`count=exact` adds the total row count to Content-Range'
+      schema: { type: string, enum: [count=exact, count=estimated] }
+
+  headers:
+    ContentRange:
+      description: 'e.g. `0-19/169` (returned rows / total when Prefer: count=exact)'
+      schema: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Missing/invalid apikey, or the resource is not public (base tables are never public)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Story:
+      type: object
+      properties:
+        id:                 { type: string, format: uuid, description: Permanent story id; page URL /news/<id> }
+        slug:               { type: [string, 'null'], description: Not used yet }
+        headline:           { type: string }
+        description:        { type: [string, 'null'], description: Publisher-provided description (plain text) }
+        summary:            { type: [string, 'null'], description: AI summary (not generated yet) }
+        story_type:
+          type: string
+          enum: [announcement, product_release, model_release, research, funding, business, policy, security, analysis, news, other]
+        importance_score:   { type: [integer, 'null'], minimum: 0, maximum: 100 }
+        first_published_at: { type: [string, 'null'], format: date-time, description: Publisher publication time }
+        last_updated_at:    { type: [string, 'null'], format: date-time }
+        published_at:       { type: string, format: date-time, description: Time it went live on this site }
+        primary_media_id:   { type: [string, 'null'], format: uuid, description: Not used yet }
+        created_at:         { type: string, format: date-time }
+        updated_at:         { type: string, format: date-time }
+        source_count:       { type: integer, description: Number of published source articles }
+      example:
+        id: ae893d94-f3ca-4045-af6a-895b1b223288
+        slug: null
+        headline: Google rolls out new search homepage with AI chat history and no search button
+        description: Google search is making it even easier to access AI tools on the search page.
+        summary: null
+        story_type: news
+        importance_score: null
+        first_published_at: '2026-11-20T21:58:29+00:00'
+        last_updated_at: '2026-11-20T21:58:29+00:00'
+        published_at: '2026-11-21T07:32:08.04715+00:00'
+        primary_media_id: null
+        created_at: '2026-11-21T07:32:08.04715+00:00'
+        updated_at: '2026-11-21T07:32:08.04715+00:00'
+        source_count: 1
+
+    StorySource:
+      type: object
+      properties:
+        story_id:          { type: string, format: uuid }
+        article_id:        { type: string, format: uuid }
+        title:             { type: string, description: Original publisher headline }
+        original_url:      { type: string, format: uri, description: Link to the publisher article }
+        author:            { type: [string, 'null'] }
+        published_at:      { type: [string, 'null'], format: date-time, description: Publisher publication time }
+        source_id:         { type: string, format: uuid }
+        source_name:       { type: string, example: OpenAI News }
+        source_domain:     { type: string, example: openai.com }
+        relationship_type: { type: string, enum: [primary_coverage, independent_coverage, follow_up, correction, related] }
+        is_primary:        { type: boolean }
+
+    StoryCategory:
+      type: object
+      properties:
+        story_id:      { type: string, format: uuid }
+        category_id:   { type: string, format: uuid }
+        category_name: { type: string }
+        category_slug: { type: string, example: model-releases }
+
+    StoryCompany:
+      type: object
+      properties:
+        story_id:     { type: string, format: uuid }
+        company_id:   { type: string, format: uuid }
+        company_name: { type: string }
+        company_slug: { type: string, example: openai }
+
+    StoryTool:
+      type: object
+      properties:
+        story_id:  { type: string, format: uuid }
+        tool_id:   { type: string, format: uuid }
+        tool_name: { type: string }
+        tool_slug: { type: string, example: chatgpt }
+
+    SearchRequest:
+      type: object
+      properties:
+        p_query:         { type: [string, 'null'], description: Full-text query; null/empty = no text filter }
+        p_from:          { type: [string, 'null'], format: date-time, description: published_at >= p_from }
+        p_to:            { type: [string, 'null'], format: date-time, description: published_at < p_to }
+        p_company_slug:  { type: [string, 'null'] }
+        p_tool_slug:     { type: [string, 'null'] }
+        p_category_slug: { type: [string, 'null'] }
+        p_limit:         { type: integer, default: 20, minimum: 1, maximum: 100 }
+        p_offset:        { type: integer, default: 0, minimum: 0 }
+
+    Error:
+      type: object
+      properties:
+        code:    { type: string, example: '42501' }
+        message: { type: string, example: permission denied for table articles }
+        details: { type: [string, 'null'] }
+        hint:    { type: [string, 'null'] }
+
+# ---------------------------------------------------------------------------
+# Internal (NOT for the frontend): the ingest API Huginn posts to.
+# Bound to 127.0.0.1:8787 on the server; not reachable from the internet.
+# ---------------------------------------------------------------------------
+x-internal-ingest-api:
+  server: http://127.0.0.1:8787   # Huginn uses http://host.docker.internal:8787
+  auth: 'Authorization: Bearer <AI_NEWS_INGEST_TOKEN>'
+  endpoints:
+    GET /healthz:
+      200: { status: ok }
+      503: database unavailable
+    POST /v1/articles:
+      request:
+        source_slug:  { type: string, required: true, pattern: '^[a-z0-9-]+$', note: must exist in ai_news.sources }
+        title:        { type: string, required: true, note: HTML stripped, max 1000 }
+        url:          { type: string, required: true, pattern: '^https?://', note: max 2048 }
+        description:  { type: string, note: HTML stripped, max 2000 }
+        author:       { type: string }
+        language:     { type: string, default: en }
+        published_at: { type: string, note: 'ISO 8601 or RFC 822; unparseable -> null' }
+      responses:
+        201: { status: created, article_id: uuid, story_id: uuid, publication_status: 'published | pending_review' }
+        200: '{ status: duplicate, article_id } | { status: skipped_old } (older than AI_NEWS_MAX_AGE_DAYS, default 30)'
+        401: invalid token
+        422: validation error or unknown source
