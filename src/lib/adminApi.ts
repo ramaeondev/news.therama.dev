@@ -71,6 +71,65 @@ export const setStoryStatus = (storyId: string, status: AdminStatus, note?: stri
     p_note: note ?? null,
   });
 
+export interface BatchStatusResult {
+  succeeded: string[];
+  failed: { id: string; message: string }[];
+}
+
+/**
+ * Applies one status to many stories, a few at a time so the API isn't flooded.
+ * The backend RPC takes a single id, so this fans out; partial failures are
+ * reported per story instead of failing the whole batch. An expired session
+ * still surfaces as AuthRequiredError (after the in-flight calls settle).
+ */
+export async function setStoriesStatus(
+  ids: string[],
+  status: AdminStatus,
+  note?: string,
+  concurrency = 4,
+): Promise<BatchStatusResult> {
+  const outcomes: (Error | null)[] = new Array(ids.length).fill(null);
+  let authError: AuthRequiredError | null = null;
+  let next = 0;
+  const worker = async () => {
+    while (next < ids.length && !authError) {
+      const i = next++;
+      try {
+        await setStoryStatus(ids[i], status, note);
+      } catch (err) {
+        if (err instanceof AuthRequiredError) {
+          authError = err;
+          return;
+        }
+        outcomes[i] = err instanceof Error ? err : new Error("Action failed");
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, ids.length) }, worker));
+  if (authError) throw authError;
+  const result: BatchStatusResult = { succeeded: [], failed: [] };
+  ids.forEach((id, i) => {
+    const err = outcomes[i];
+    if (err) result.failed.push({ id, message: err.message });
+    else result.succeeded.push(id);
+  });
+  return result;
+}
+
+/** Upper bound for "select all": large queues are still a handful of pages. */
+export const SELECT_ALL_CAP = 500;
+
+/** Every story id in a status tab, paging through `admin_list_stories`. */
+export async function fetchAllStoryIds(status: AdminStatus, cap = SELECT_ALL_CAP, pageSize = 50): Promise<string[]> {
+  const ids: string[] = [];
+  for (let offset = 0; offset < cap; offset += pageSize) {
+    const rows = await fetchAdminStories(status, Math.min(pageSize, cap - offset), offset);
+    ids.push(...rows.map((r) => r.id));
+    if (rows.length < pageSize) break;
+  }
+  return ids;
+}
+
 export interface MergeSuggestion {
   suggestion_id: string;
   score: number;

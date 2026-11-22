@@ -41,7 +41,7 @@ src/
 | `/search?q=&range=&from=&to=&company=&tool=&category=` | Full-text search with time and topic filters (shareable URLs; topic chips link here) |
 | `/sources`, `/sources/:slug` | Publishers and their stories |
 | `/about` | About and attribution, with social links from `static.social_links` |
-| `/admin` | Editorial review (not linked; `noindex`). Password-only sign-in for the single admin; publish, reject or unpublish stories; merge or dismiss possible duplicates |
+| `/admin` | Editorial review (not linked; `noindex`). Password-only sign-in for the single admin; publish, reject or unpublish stories one by one or in bulk (tick rows, or select a whole tab, then confirm the batch); merge or dismiss possible duplicates |
 
 ## Notes
 - **Public pages are read-only:** no login, no writes. Only the public views and the `search_published_stories` RPC are used.
