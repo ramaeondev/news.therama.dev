@@ -45,7 +45,7 @@ export default function Story() {
 
   const back = () => (location.key !== "default" ? navigate(-1) : navigate("/"));
 
-  // A story merged into another one by the admin: follow it.
+  // Old links to a story that was merged into another one (merging is no longer done): follow them.
   const missing = !isPending && !isError && !story && Boolean(id);
   const redirect = useQuery({
     queryKey: ["redirect", id],

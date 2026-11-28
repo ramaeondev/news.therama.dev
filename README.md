@@ -41,15 +41,14 @@ src/
 | `/search?q=&range=&from=&to=&company=&tool=&category=` | Full-text search with time and topic filters (shareable URLs; topic chips link here) |
 | `/sources`, `/sources/:slug` | Publishers and their stories |
 | `/about` | About and attribution, with social links from `static.social_links` |
-| `/admin` | Editorial review (not linked; `noindex`). Password-only sign-in for the single admin; publish, reject or unpublish stories one by one or in bulk (tick rows, or select a whole tab, then confirm the batch); merge or dismiss possible duplicates |
 
 ## Notes
 - **Public pages are read-only:** no login, no writes. Only the public views and the `search_published_stories` RPC are used.
-- **Admin (`/admin`):** signs in through Supabase Auth with a fixed account email (`VITE_ADMIN_EMAIL`, default `admin@news.therama.dev`) and the password set by api.therama.dev's `scripts/create-ai-news-admin.sh`. It calls the `ai_news.admin_*` RPCs with the admin's token; the server checks the admin role on every call. The session lives in `sessionStorage`.
+- **No admin or review:** every story the backend ingests is published immediately, and similar stories from different sources are all shown (nothing is merged or hidden). There is no sign-in anywhere on the site.
 - **Feed order:** sorted by `first_published_at`, the publisher's publication time.
 - **Time zone:** all dates show in IST (Asia/Kolkata) by default. The clock picker in the header switches to UTC, the reader's local time or any zone; the choice is kept in `localStorage` (`news-timezone`).
 - **Images:** publisher-hosted (`image_url` from the API), loaded with `referrerpolicy=no-referrer`; hidden if they fail to load.
-- **Merged stories:** an old `/news/:id` of a story the admin merged redirects through `v_story_redirects`.
+- **Old merged-story links:** stories are no longer merged; an old `/news/:id` of a previously merged story still redirects through `v_story_redirects` if one applies.
 - **Backend availability:** the backend runs on a home server and can be briefly offline. Pages then show a retry panel.
 - **Feature flags** (`src/config/features.ts`): topic chips and filters are on; top stories and story-type badges stay off until the backend fills that data. AI summaries appear automatically once the `summary` field is populated.
 
